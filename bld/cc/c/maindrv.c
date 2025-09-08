@@ -51,45 +51,50 @@
 #define _str(x)         quoted(x)
 #define DLL_NAME_STR    _str(DLL_NAME)
 
-
+/* RDT: 2025-09-08 - main Entry Point. */
 int main( int argc, char *argv[] )
 /********************************/
 {
-    int         retcode;
-    IDEDRV      info;
+  int         retcode;
+  IDEDRV      info;
 #ifndef __UNIX__
-    int         cmd_len;
-    char        *cmd_line;
+  int         cmd_len;
+  char        *cmd_line;
 #endif
 
 #if !defined( __WATCOMC__ )
-    _argc = argc;
-    _argv = argv;
+  _argc = argc;
+  _argv = argv;
 #elif !defined( __UNIX__ )
-    /* unused parameters */ (void)argc; (void)argv;
+  /* unused parameters */ (void)argc; (void)argv;
 #endif
 
-    IdeDrvInit( &info, DLL_NAME_STR, NULL );
+  IdeDrvInit( &info, DLL_NAME_STR, NULL );
+    
 #ifdef __UNIX__
-    retcode = IdeDrvExecDLLArgv( &info, argc, argv );
+  retcode = IdeDrvExecDLLArgv( &info, argc, argv );
 #else
-    cmd_len = _bgetcmd( NULL, 0 ) + 1;
-    cmd_line = malloc( cmd_len );
-    if( cmd_line != NULL )
-        _bgetcmd( cmd_line, cmd_len );
-    retcode = IdeDrvExecDLL( &info, cmd_line );
-    free( cmd_line );
+  cmd_len = _bgetcmd( NULL, 0 ) + 1;
+  cmd_line = malloc( cmd_len );
+    
+  if ( cmd_line != NULL )
+    _bgetcmd( cmd_line, cmd_len );
+  retcode = IdeDrvExecDLL( &info, cmd_line );
+  free( cmd_line );
 #endif
-    switch( retcode ) {
+    
+  switch( retcode ) {
     case IDEDRV_SUCCESS:
     case IDEDRV_ERR_RUN:
     case IDEDRV_ERR_RUN_EXEC:
     case IDEDRV_ERR_RUN_FATAL:
-        break;
+      break;
     default:
-        IdeDrvPrintError( &info );
-        break;
-    }
-    IdeDrvUnloadDLL( &info );
-    return( retcode == IDEDRV_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE );
+      IdeDrvPrintError( &info );
+      break;
+  }
+    
+  IdeDrvUnloadDLL( &info );
+  return( retcode == IDEDRV_SUCCESS ? EXIT_SUCCESS : EXIT_FAILURE );
+
 }
