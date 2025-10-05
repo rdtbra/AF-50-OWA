@@ -951,39 +951,47 @@ static bool OpenPgmFile( void )
     return( true );
 }
 
-
 static void Parse( void )
+/* RDT: 20251004 - Wrapper do parser do texto do programa */
 {
-    EmitInit();
-    /*
-     * The first token in a file should be #include if a user wants to
-     * use pre-compiled headers. The following call to NextToken() to
-     * get the very first token of the file will load the pre-compiled
-     * header if the user requested such and it is a #include directive.
-     */
-    if( ForceInclude != NULL ) {
-        if( !OpenSrcFile( ForceInclude, FT_HEADER_FORCED ) ) {
-            PrtfFilenameErr( ForceInclude, FT_HEADER_FORCED, true );
-        }
+  EmitInit();
+  /*
+   * The first token in a file should be #include if a user wants to
+   * use pre-compiled headers. The following call to NextToken() to
+   * get the very first token of the file will load the pre-compiled
+   * header if the user requested such and it is a #include directive.
+   */
+  if( ForceInclude != NULL ) {
+    if( !OpenSrcFile( ForceInclude, FT_HEADER_FORCED ) ) {
+      PrtfFilenameErr( ForceInclude, FT_HEADER_FORCED, true );
     }
-    if( ForcePreInclude != NULL ) {
-        openForcePreInclude();
-    }
-    CompFlags.ok_to_use_precompiled_hdr = true;
-    NextToken();
-    /*
-     * If we didn't get a #include with the above call to NextToken()
-     * it's too late to use pre-compiled header now.
-     */
-    CompFlags.ok_to_use_precompiled_hdr = false;
-    ParsePgm();
-    if( DefFile != NULL ) {
-        fclose( DefFile );
-        DefFile = NULL;
-    }
-    CheckCallParms();
-    EndBlock();     /* end of block 0 */
-    MacroFini();
+  }
+ 
+  if( ForcePreInclude != NULL ) {
+    openForcePreInclude();
+  }
+  CompFlags.ok_to_use_precompiled_hdr = true;
+
+  /* RDT: 20251004 - Obtem o próximo token compilavel */
+  NextToken();
+  /*
+   * If we didn't get a #include with the above call to NextToken()
+   * it's too late to use pre-compiled header now.
+   */
+  CompFlags.ok_to_use_precompiled_hdr = false;
+
+  /* RDT: 20251004 - Executa o parse do programa */
+  ParsePgm();
+ 
+  if( DefFile != NULL ) {
+    fclose( DefFile );
+    DefFile = NULL;
+  }
+ 
+  CheckCallParms();
+  EndBlock();     /* end of block 0 */
+  MacroFini();
+ 
 }
 
 static void CPP_Parse( void )
@@ -1004,90 +1012,119 @@ static void CPP_Parse( void )
 
 static void DoCCompile( char **cmdline )
 /**************************************/
+/* RDT: 20251004 - Realiza a compilação do código C/C++ */
 {
-    jmp_buf     env;
+  jmp_buf env;
 
-    Environment = JMPBUF_PTR( env );
-    if( setjmp( env ) ) {           /* if fatal error has occurred */
-        EmitAbort();                /* abort code generator */
-        CPragmaFini();
-        CloseFiles();
-        FreeFNames();
-        FreeRDir();
-        FreeIAlias();
-        ErrCount = 1;
-        MyExit( 1 );
-    }
-    ParseInit();
-    if( ParseCmdLine( cmdline ) ) {
-        if( WholeFName == NULL ) {
-            CErr1( ERR_FILENAME_REQUIRED );
-            return;
-        }
-        MakePgmName();
-        DelErrFile();               /* delete old error file */
-        CPragmaInit();              /* memory model is known now */
-#if _CPU == 370
-        ParseAuxFile();
-#endif
-        if( CompFlags.cpp_mode ) {
-            PrintWhiteSpace = true;
-            if( ForcePreInclude != NULL ) {
-                if( CppFile == NULL )
-                    OpenCppFile();
-                CompFlags.cpp_output = false;
-                if( openForcePreInclude() ) {
-                    CurToken = T_NULL;
-                    while( CurToken != T_EOF ) {
-                        CurToken = GetNextToken();
-                    }
-                }
-                CompFlags.cpp_output = true;
-            }
-            OpenPgmFile();
-            CPP_Parse();
-            if( !CompFlags.quiet_mode ) {
-                PrintStats();
-            }
-            if( CompFlags.warnings_cause_bad_exit ) {
-                ErrCount += WngCount;
-            }
-        } else {
-            OpenPgmFile();
-            MacroAddComp(); // Add any compile time only macros
-            Parse();
-            if( !CompFlags.quiet_mode ) {
-                PrintStats();
-            }
-            if( CompFlags.warnings_cause_bad_exit ) {
-                ErrCount += WngCount;
-            }
-            if( ( ErrCount == 0 ) && ( !CompFlags.check_syntax ) ) {
-                if( CompFlags.emit_browser_info ) {
-                    DwarfBrowseEmit();
-                }
-                FreeMacroSegments();
-                DoCompile();
-            } else {
-                FreeMacroSegments();
-            }
-        }
-        if( ErrCount == 0 ) {
-            DumpDepFile();
-        } else {
-            DelDepFile();
-        }
-
-        SymFini();
-        CPragmaFini();
-    } else {
-        ErrCount = 1;
-    }
+  Environment = JMPBUF_PTR( env );
+ 
+  if( setjmp( env ) ) {           /* if fatal error has occurred */
+    EmitAbort();                /* abort code generator */
+    CPragmaFini();
     CloseFiles();
     FreeFNames();
     FreeRDir();
     FreeIAlias();
-    FreeIncFileList();
+    ErrCount = 1;
+    MyExit( 1 );
+  }
+
+  /* RDT: 202501004 - Inicialização do Parser */
+  ParseInit();
+ 
+  if( ParseCmdLine( cmdline ) ) {
+    if( WholeFName == NULL ) {
+      CErr1( ERR_FILENAME_REQUIRED );
+      return;
+    }
+    MakePgmName();
+    DelErrFile();               /* delete old error file */
+    CPragmaInit();              /* memory model is known now */
+#if _CPU == 370
+    ParseAuxFile();
+#endif
+    if( CompFlags.cpp_mode ) {
+     
+      PrintWhiteSpace = true;
+     
+      if( ForcePreInclude != NULL ) {
+       
+        if( CppFile == NULL )
+          OpenCppFile();
+       
+        CompFlags.cpp_output = false;
+       
+        if( openForcePreInclude() ) {
+          CurToken = T_NULL;
+         
+          while( CurToken != T_EOF ) {
+            CurToken = GetNextToken();
+          }
+         
+        }
+        CompFlags.cpp_output = true;
+      }
+     
+      OpenPgmFile();
+      CPP_Parse();
+     
+      if( !CompFlags.quiet_mode ) {
+        PrintStats();
+      }
+     
+      if( CompFlags.warnings_cause_bad_exit ) {
+        ErrCount += WngCount;
+      }
+     
+    } else {
+
+      /* RDT: 20251004 - Esta parte vai executar somente CompFlags.cpp_mode = false */
+      OpenPgmFile();
+      MacroAddComp(); // Add any compile time only macros
+
+      /* RDT: 20251004 - Executa o parse do programa. Sem c++ pelo que entendi */
+      Parse();
+     
+      if( !CompFlags.quiet_mode ) {
+        PrintStats();
+      }
+     
+      if( CompFlags.warnings_cause_bad_exit ) {
+        ErrCount += WngCount;
+      }
+     
+      if( ( ErrCount == 0 ) && ( !CompFlags.check_syntax ) ) {
+        if( CompFlags.emit_browser_info ) {
+          DwarfBrowseEmit();
+        }
+        FreeMacroSegments();
+        /* RDT: 20251004 - Compilação propriamente. */
+        DoCompile();
+      } else {
+        FreeMacroSegments();
+      }
+    }
+   
+    if( ErrCount == 0 ) {
+      DumpDepFile();
+    } else {
+      DelDepFile();
+    }
+
+    SymFini();
+    CPragmaFini();
+   
+  } else {
+    ErrCount = 1;
+  }
+
+  /* RDT: 20251004 - Trecho de finalização da compilação - retornar para FrontEnd */  
+  CloseFiles();
+  FreeFNames();
+  FreeRDir();
+  FreeIAlias();
+  FreeIncFileList();
+ 
 }
 
 static bool try_open_file( const char *path, pgroup2 *fp, pgroup2 *fa, src_file_type typ )
@@ -1402,27 +1439,28 @@ void CloseFiles( void )
     }
 }
 
-
 bool FrontEnd( char **cmdline )
+/* RDT: 20251004 - Entrada no Front End do compilador */
 {
 #if defined(__WATCOMC__) && defined( _M_IX86 )
-    /*
-     * set to 0 in case 8087 is present
-     */
-    _real87 = 0;
-    _8087 = 0;
+  /*
+   * set to 0 in case 8087 is present
+   */
+  _real87 = 0;
+  _8087 = 0;
 #endif
 
-    InitGlobalVars();
-    CMemInit();
-    InitMsg();
-    InitPurge();
-    initGlobals();
-    DoCCompile( cmdline );
-    finiGlobals();
-    PurgeMemory();
-    FiniMsg();
-    CMemFini();
-    GlobalCompFlags.cc_first_use = false;
-    return( ErrCount != 0 );
+  InitGlobalVars();
+  CMemInit();
+  InitMsg();
+  InitPurge();
+  initGlobals();
+  /* RDT: 20251004 - Realiza a compilação do programa C/C++ */
+  DoCCompile( cmdline );
+  finiGlobals();
+  PurgeMemory();
+  FiniMsg();
+  CMemFini();
+  GlobalCompFlags.cc_first_use = false;
+  return( ErrCount != 0 );
 }
