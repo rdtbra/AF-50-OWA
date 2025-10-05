@@ -47,45 +47,54 @@ static   void    ReverseParms( void );       /* reverse order of parms */
 
 
 void ParsePgm( void )
+/* RDT: 20251004 - Execução completa do Parse do programa */
 {
-    SYM_HANDLE      dummysym;
+  SYM_HANDLE      dummysym;
 
-    CompFlags.external_defn_found = false;
-    CompFlags.initializing_data = false;
-    dummysym = SYM_NULL;
-    GlobalSym = SYM_NULL;
+  CompFlags.external_defn_found = false;
+  CompFlags.initializing_data = false;
+  dummysym = SYM_NULL;
+  GlobalSym = SYM_NULL;
 
-    do {
-        if( DeclList( &dummysym ) ) {  /* if this is a function defn */
-            FuncDefn( CurFunc );
-            SrcLoc = CurFunc->src_loc;
-            GenFunctionNode( CurFuncHandle );
+  /* RDT: 20251004 - Loop de processamento do texto do programa */
+  do {
+      
+    if( DeclList( &dummysym ) ) {  /* if this is a function defn */
+        
+      FuncDefn( CurFunc );
+      SrcLoc = CurFunc->src_loc;
+      GenFunctionNode( CurFuncHandle );
 
-            SymLevel = 1;
-            ParmDeclList();
-            SymLevel = 0;
-            if( CurToken == T_LEFT_BRACE ) {
-                BeginFunc();
-                Statement();
-                CMemFree( CurFunc->name );
-                CurFunc->name = NULL;
-                SymReplace( CurFunc, CurFuncHandle );
-                CurFunc = NULL;
-                CurFuncNode = NULL;
-                CurFuncHandle = SYM_NULL;
-            } else {
-                MustRecog( T_LEFT_BRACE );
-            }
-        }
-    } while( CurToken != T_EOF );
-
-    if( !CompFlags.external_defn_found ) {
-        if( !CompFlags.extensions_enabled ) {
-            CErr1( ERR_NO_EXTERNAL_DEFNS_FOUND );
-        }
+      SymLevel = 1;
+      ParmDeclList();
+      SymLevel = 0;
+        
+      if( CurToken == T_LEFT_BRACE ) {
+          
+        BeginFunc();
+        Statement();
+        CMemFree( CurFunc->name );
+        CurFunc->name = NULL;
+        SymReplace( CurFunc, CurFuncHandle );
+        CurFunc = NULL;
+        CurFuncNode = NULL;
+        CurFuncHandle = SYM_NULL;
+          
+      } else {
+          
+        MustRecog( T_LEFT_BRACE );
+          
+      }
     }
-}
+  /* RDT: 20251004 - Este do while processa o arquivo até o final */    
+  } while( CurToken != T_EOF );
 
+  if( !CompFlags.external_defn_found ) {
+    if( !CompFlags.extensions_enabled ) {
+      CErr1( ERR_NO_EXTERNAL_DEFNS_FOUND );
+    }
+  }
+}
 
 static void FuncDefn( SYMPTR sym )
 {
