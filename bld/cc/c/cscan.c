@@ -58,49 +58,49 @@ static int              SavedCurrChar;      /* used when get tokens from macro *
 static unsigned char    ClassTable[LCHR_MAX];
 
 static struct {
-    unsigned short  chr;
-    unsigned char   cls;
+  unsigned short  chr;
+  unsigned char   cls;
 } InitClassTable[] = {
-    '\r',       SCAN_CR,
-    '\n',       SCAN_NEWLINE,
-    ' ',        SCAN_WHITESPACE,
-    '\f',       SCAN_WHITESPACE,
-    '\t',       SCAN_WHITESPACE,
-    '\v',       SCAN_WHITESPACE,
-    '\'',       SCAN_CHARCONST,
-    '"',        SCAN_STRING,
-    '(',        SCAN_DELIM1,
-    ')',        SCAN_DELIM1,
-    ',',        SCAN_DELIM1,
-    ';',        SCAN_DELIM1,
-    '?',        SCAN_DELIM1,
-    '/',        SCAN_SLASH,
-    '-',        SCAN_DELIM2,        // -, -=, --, ->
-    '=',        SCAN_DELIM2,        // =, ==
-    ':',        SCAN_DELIM2,        // :, :>
-    '*',        SCAN_DELIM2,        // *, *=
-    '[',        SCAN_DELIM1,
-    ']',        SCAN_DELIM1,
-    '{',        SCAN_DELIM1,
-    '}',        SCAN_DELIM1,
-    '~',        SCAN_DELIM1,
-    '.',        SCAN_DOT,
-    '!',        SCAN_DELIM2,        // !, !=
-    '#',        SCAN_DELIM2,        // #, ##
-    '%',        SCAN_DELIM2,        // %, %=
-    '&',        SCAN_DELIM2,        // &, &=, &&
-    '+',        SCAN_DELIM2,        // +, +=, ++
-    '<',        SCAN_DELIM2,        // <, <=, <<, <<=, <:
-    '>',        SCAN_DELIM2,        // >, >=, >>, >>=
-    '^',        SCAN_DELIM2,        // ^, ^=
-    '|',        SCAN_DELIM2,        // |, |=, ||
-    '_',        SCAN_NAME,
-    'L',        SCAN_WIDE,
-    LCHR_EOF,   SCAN_EOF,
+  '\r',       SCAN_CR,
+  '\n',       SCAN_NEWLINE,
+  ' ',        SCAN_WHITESPACE,
+  '\f',       SCAN_WHITESPACE,
+  '\t',       SCAN_WHITESPACE,
+  '\v',       SCAN_WHITESPACE,
+  '\'',       SCAN_CHARCONST,
+  '"',        SCAN_STRING,
+  '(',        SCAN_DELIM1,
+  ')',        SCAN_DELIM1,
+  ',',        SCAN_DELIM1,
+  ';',        SCAN_DELIM1,
+  '?',        SCAN_DELIM1,
+  '/',        SCAN_SLASH,
+  '-',        SCAN_DELIM2,        // -, -=, --, ->
+  '=',        SCAN_DELIM2,        // =, ==
+  ':',        SCAN_DELIM2,        // :, :>
+  '*',        SCAN_DELIM2,        // *, *=
+  '[',        SCAN_DELIM1,
+  ']',        SCAN_DELIM1,
+  '{',        SCAN_DELIM1,
+  '}',        SCAN_DELIM1,
+  '~',        SCAN_DELIM1,
+  '.',        SCAN_DOT,
+  '!',        SCAN_DELIM2,        // !, !=
+  '#',        SCAN_DELIM2,        // #, ##
+  '%',        SCAN_DELIM2,        // %, %=
+  '&',        SCAN_DELIM2,        // &, &=, &&
+  '+',        SCAN_DELIM2,        // +, +=, ++
+  '<',        SCAN_DELIM2,        // <, <=, <<, <<=, <:
+  '>',        SCAN_DELIM2,        // >, >=, >>, >>=
+  '^',        SCAN_DELIM2,        // ^, ^=
+  '|',        SCAN_DELIM2,        // |, |=, ||
+  '_',        SCAN_NAME,
+  'L',        SCAN_WIDE,
+  LCHR_EOF,   SCAN_EOF,
 #ifdef CHAR_MACRO
-    LCHR_MACRO, SCAN_MACRO,
+  LCHR_MACRO, SCAN_MACRO,
 #endif
-    '\0',       0
+  '\0',       0
 };
 
 
@@ -1900,41 +1900,55 @@ static TOKEN ScanEof( void )
     return( T_EOF );
 }
 
+/* RDT: 20251004 - ScanFunc é um array de ponteiro de funções para tratamento do tipo 
+   de token que estamos analisando, e toma como referência o arquivo _scnclas.h */
 static TOKEN (*ScanFunc[])( void ) = {
-    #define pick(e,p) p,
-    #include "_scnclas.h"
-    #undef pick
+  #define pick(e,p) p,
+  #include "_scnclas.h"
+  #undef pick
 };
 
 TOKEN ScanToken( void )
 /*********************/
+/* RDT: 20251004 - Função que faz o scan de um token de programa,
+   usando uma estratégia inteligente de ponteiros de função */ 
 {
-    /*
-     * remember line token starts on
-     */
-    TokenLoc = SrcFileLoc;
+  /*
+   * remember line token starts on
+   */
+  TokenLoc = SrcFileLoc;
 //    TokenLen = 1;
 //    Buffer[0] = CurrChar;
-    return( (*ScanFunc[ClassTable[CurrChar]])() );
+  /* Retorna o resultado da função armazenada no array ScanFunc, indexada pelo array
+     ClassTable, que por sua vez é indexada pelo caracter corrente */
+  return( (*ScanFunc[ClassTable[CurrChar]])() );
 }
 
 TOKEN NextToken( void )
 /*********************/
+/* RDT: 20251004 - Obtem o próximo token do programa */
 {
-    do {
-        if( MacroPtr == NULL ) {
-            CurToken = ScanToken();
-        } else {
-            CurToken = GetMacroToken();
-            if( CurToken == T_NULL ) {
-                CurToken = ScanToken();
-            }
-        }
-    } while( CurToken == T_WHITE_SPACE );
+  do {
+    
+    if( MacroPtr == NULL ) {
+      /* RDT: 20251004 - obter token comum */ 
+      CurToken = ScanToken();
+    } else {
+      /* RDT: 20251004 - obter token de macro */
+      CurToken = GetMacroToken();
+      if( CurToken == T_NULL ) {
+        /* RDT: 20251004 - Caso o processamento do token de macro tenha retornado null,
+           fazer o scan do próximo token */
+        CurToken = ScanToken();
+      }
+      
+    }
+  /* RDT: 20251004 - Loop do que processa white spaces enquanto eles se apresentarem */  
+  } while( CurToken == T_WHITE_SPACE );
 #ifdef FDEBUG
-    DumpToken();
+  DumpToken();
 #endif
-    return( CurToken );
+  return( CurToken );
 }
 
 TOKEN PPNextToken( void )
@@ -2004,24 +2018,35 @@ TOKEN ReScanToken( void )
 
 void ScanInit( void )
 /*******************/
+/* RDT: 20251004 - Inicializa o scanner, usando o array InitClassTable */
 {
-    int         i;
-    int         c;
+  int i;
+  int c;
 
-    memset( &ClassTable[0],   SCAN_INVALID, 256 );
-    memset( &ClassTable['A'], SCAN_NAME,    26 );
-    memset( &ClassTable['a'], SCAN_NAME,    26 );
-    memset( &ClassTable['0'], SCAN_NUM,     10 );
-    for( i = 0; (c = InitClassTable[i].chr) != '\0'; i++ ) {
-        ClassTable[c] = InitClassTable[i].cls;
-    }
-    CurrChar = '\n';
-    PPControl = PPCTL_NORMAL;
-    CompFlags.scanning_comment = false;
-    SizeOfCount = 0;
-    NextChar = GetNextChar;
-    UnGetChar = GetNextCharUndo;
-    GetCharCheck = GetCharCheckFile;
+  /* RDT: 20251004 - Inicializa ClassTable */
+  memset( &ClassTable[0],   SCAN_INVALID, 256 );
+
+  /* RDT: 20251004 - Inicializa classes associadas a caracteres A-Z, a-z com SCAN_NAME e 0-9 com SCAN_NUM */
+  memset( &ClassTable['A'], SCAN_NAME,    26 );
+  memset( &ClassTable['a'], SCAN_NAME,    26 );
+  memset( &ClassTable['0'], SCAN_NUM,     10 );
+
+  /* RDT: 20251004 - Copia as classes específicas de InitClassTable para ClassTable */
+  for( i = 0; (c = InitClassTable[i].chr) != '\0'; i++ ) {
+    ClassTable[c] = InitClassTable[i].cls;
+  }
+
+  /* Iniciar CurrChar com \n */ 
+  CurrChar = '\n';
+  PPControl = PPCTL_NORMAL;
+  CompFlags.scanning_comment = false;
+  SizeOfCount = 0;
+
+  /* RDT: 20251004 - Funções de processamento de caracter - todas são ponteiros de função e 
+     aqui estão apontando para as funções default */
+  NextChar = GetNextChar;
+  UnGetChar = GetNextCharUndo;
+  GetCharCheck = GetCharCheckFile;
 }
 
 bool InitPPScan( void )
