@@ -29,7 +29,7 @@
 *
 ****************************************************************************/
 
-
+/* Associa a função ao tipo de token que está sendo processado no momento pelo scanner */
 pick( SCAN_NAME,       ScanName           )  // identifier
 pick( SCAN_WIDE,       ScanWide           )  // L"abc" or L'a' or Lname
 pick( SCAN_NUM,        ScanNum            )  // number that starts with a digit
